@@ -1,0 +1,30 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+
+	<!-- LimpidUI core -->
+	<Script file="ChatUI\init.lua"/>
+	<Script file="ChatUI\tween.lua"/>
+	<Script file="ChatUI\constants.lua"/>
+	<Script file="ChatUI\utils.lua"/>
+
+	<!-- LimpidUI UI widgets (Components/UI folder) -->
+	<Script file="Components\UI\ChatDock.lua"/>
+	<Script file="Components\UI\ChatTab.lua"/>
+	<Script file="Components\UI\EditBox.lua"/>
+	<Script file="Components\UI\FadingFrame.lua"/>
+	<Script file="Components\UI\MainContainerFrame.lua"/>
+	<Script file="Components\UI\MessageLine.lua"/>
+	<Script file="Components\UI\MoverDialog.lua"/>
+	<Script file="Components\UI\MoverFrame.lua"/>
+	<Script file="Components\UI\NewMessageAlertFrame.lua"/>
+	<Script file="Components\UI\ScrollOverlayFrame.lua"/>
+	<Script file="Components\UI\SlidingMessageFrame.lua"/>
+	<Script file="Components\UI\Window.lua"/>
+
+	<!-- Modules -->
+	<Script file="ChatUI\Modules\Config.lua"/>
+	<Script file="ChatUI\Modules\Fonts.lua"/>
+	<Script file="ChatUI\Modules\Hyperlinks.lua"/>
+	<Script file="ChatUI\Modules\TextProcessing.lua"/>
+	<Script file="ChatUI\Modules\UIManager.lua"/>
+
+</Ui>

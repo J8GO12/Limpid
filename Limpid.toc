@@ -1,0 +1,34 @@
+## Interface: 16001
+
+## Title: Limpid
+## Notes: A clean, transparent chat for WoW Forever: tidy one-line messages for loot, XP, reputation and money, a fading chat window, and a floating loot list. Type /limpid for options.
+## Notes-frFR: Un chat épuré et transparent pour WoW Forever : butin, XP, réputation et argent en lignes courtes, fenêtre de chat qui s'efface, et liste de butin flottante. Tapez /limpid pour les options.
+## Version: 1.0.0
+## Author: Jonathan
+## IconTexture: Interface\AddOns\Limpid\Assets\icon
+
+## Category: Chat & Communication
+## X-Category: Chat & Communication
+## X-License: MIT
+## X-Credits: ChatCleaner by Lars Norberg (Goldpaw), Glass by Mitchel Cabuloy (mixxorz), CleanerChat by migwynkriid
+
+## SavedVariables: Limpid_DB, LimpidUIDB
+## OptionalDeps: Ace3, LibSharedMedia-3.0, LibMoreEvents-1.0
+
+# Forever compatibility helpers (must load first)
+Core\Common\Compatibility.lua
+
+# Libraries
+Embeds.xml
+
+# Addon localization
+Locale\Locale.xml
+
+# Addon core
+Core\Core.xml
+
+# Filters & Modules
+Components\Components.xml
+
+# Chat window
+ChatUI.xml

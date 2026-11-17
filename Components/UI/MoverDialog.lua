@@ -1,0 +1,86 @@
+local Core, Constants, Utils = unpack(select(2, ...))
+
+local LockMover = Constants.ACTIONS.LockMover
+
+local LOCK_MOVER = Constants.EVENTS.LOCK_MOVER
+local UNLOCK_MOVER = Constants.EVENTS.UNLOCK_MOVER
+
+local MoverDialogMixin = {}
+
+-- luacheck: push ignore 113
+local CreateFrame = CreateFrame
+local PlaySound = PlaySound
+local SOUNDKIT = SOUNDKIT
+-- luacheck: pop
+
+local Mixin = Utils.Mixin
+
+function MoverDialogMixin:Init()
+	self:SetFrameStrata("DIALOG")
+	self:SetToplevel(true)
+	self:EnableMouse(false)
+	self:SetMovable(false)
+	self:SetClampedToScreen(true)
+	self:SetWidth(360)
+	self:SetHeight(110)
+	self:SetBackdrop({
+		bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+		edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+		tile = true,
+		insets = { left = 11, right = 12, top = 12, bottom = 11 },
+		tileSize = 32,
+		edgeSize = 32,
+	})
+	self:SetPoint("TOP", 0, -50)
+	self:Hide()
+
+	self:SetScript("OnShow", function()
+		PlaySound(SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION or 852)
+	end)
+	self:SetScript("OnHide", function()
+		PlaySound(SOUNDKIT and SOUNDKIT.GS_TITLE_OPTION_EXIT or 799)
+	end)
+
+	self.header = self:CreateTexture(nil, "ARTWORK")
+	self.header:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
+	self.header:SetWidth(256)
+	self.header:SetHeight(64)
+	self.header:SetPoint("TOP", 0, 12)
+
+	self.title = self:CreateFontString(nil, "ARTWORK")
+	self.title:SetFontObject("GameFontNormal")
+	self.title:SetPoint("TOP", self.header, "TOP", 0, -14)
+	self.title:SetText("Limpid")
+
+	self.desc = self:CreateFontString(nil, "ARTWORK")
+	self.desc:SetFontObject("GameFontHighlight")
+	self.desc:SetJustifyV("TOP")
+	self.desc:SetJustifyH("LEFT")
+	self.desc:SetPoint("TOPLEFT", 18, -32)
+	self.desc:SetPoint("BOTTOMRIGHT", -18, 48)
+	self.desc:SetText("Chat frame unlocked. You can now drag the chat frame to reposition it.")
+
+	self.lockButton = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
+	self.lockButton:SetSize(96, 22)
+	self.lockButton:SetText("Lock")
+	self.lockButton:SetScript("OnClick", function()
+		Core:Dispatch(LockMover())
+	end)
+	self.lockButton:SetPoint("BOTTOMRIGHT", -14, 14)
+
+	Core:Subscribe(LOCK_MOVER, function()
+		self:Hide()
+	end)
+
+	Core:Subscribe(UNLOCK_MOVER, function()
+		self:Show()
+	end)
+end
+
+Core.Components.CreateMoverDialog = function(name, parent)
+	-- SetBackdrop requires the BackdropTemplate on the modern client.
+	local frame = CreateFrame("Frame", name, parent, "BackdropTemplate")
+	local object = Mixin(frame, MoverDialogMixin)
+	object:Init()
+	return object
+end

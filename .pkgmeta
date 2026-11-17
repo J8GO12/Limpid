@@ -1,0 +1,11 @@
+package-as: Limpid
+
+ignore:
+  - docs
+  - README.md
+  - .gitattributes
+  - "*.zip"
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
