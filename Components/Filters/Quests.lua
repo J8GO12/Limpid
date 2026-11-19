@@ -134,7 +134,7 @@ local printSynthetic = function(stampKey, template, label, title)
 		return
 	end
 	Module[stampKey] = GetTime()
-	ns.PrintToFrame(DEFAULT_CHAT_FRAME or ChatFrame1, string_format(template, label, title))
+	ns.PrintToChatType(string_format(template, label, title), nil, "SYSTEM")
 end
 
 local onQuestAction = function(stampKey, template, label)

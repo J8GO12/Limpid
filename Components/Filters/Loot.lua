@@ -2,7 +2,7 @@ local _, ns = ...
 
 local Module = ns:NewModule("Loot")
 
--- GLOBALS: MerchantFrame, ChatTypeInfo, DEFAULT_CHAT_FRAME, ChatFrame1
+-- GLOBALS: MerchantFrame, ChatTypeInfo
 -- GLOBALS: hooksecurefunc, C_Container, TakeInboxItem, GetInboxItem, GetInboxItemLink
 -- GLOBALS: GetCursorInfo, CreateFrame, MAX_TRADABLE_ITEMS
 -- GLOBALS: GetTradePlayerItemLink, GetTradePlayerItemInfo
@@ -405,7 +405,7 @@ Module.ReportItemSold = function(self, link, count)
 		msg = string_format(ns.out.item_deficit, item)
 	end
 
-	ns.PrintToFrame(DEFAULT_CHAT_FRAME or ChatFrame1, msg, "LOOT")
+	ns.PrintToChatType(msg, "LOOT")
 end
 
 -- Taking an item from the mailbox produces no loot chat message, so the
@@ -432,7 +432,7 @@ Module.ReportMailItem = function(self, mailID, attachIndex)
 		msg = string_format(ns.out.item_single, item)
 	end
 
-	ns.PrintToFrame(DEFAULT_CHAT_FRAME or ChatFrame1, msg, "LOOT")
+	ns.PrintToChatType(msg, "LOOT")
 end
 
 -- Trades emit no loot line, so mirror mail/vendor: "+ item" received, "- item" given.
@@ -451,7 +451,7 @@ Module.ReportTradeItem = function(self, link, count, received)
 	end
 
 	local msg = multiple and string_format(template, item, count) or string_format(template, item)
-	ns.PrintToFrame(DEFAULT_CHAT_FRAME or ChatFrame1, msg, "LOOT")
+	ns.PrintToChatType(msg, "LOOT")
 end
 
 local onAddMessageProxy = function(...)

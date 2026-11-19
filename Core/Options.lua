@@ -703,6 +703,15 @@ Options.GenerateOptionsMenu = function(self)
 			count = count + 1
 			order = order + 10
 			item.order = 100 + order
+
+			-- Say what unticking does. For a reformatting filter it now takes
+			-- the whole category out of chat, which is worth stating: the
+			-- descriptions only ever described the formatting, so unticking one
+			-- and still seeing the raw lines read like the filter had failed.
+			if ns.FilterHidesCategory and ns.FilterHidesCategory(data.name) and type(item.desc) == "string" then
+				item.desc = item.desc .. "\n\n" .. L["Unticking this also hides these messages from chat."]
+			end
+
 			ccGroup.args[data.name] = item
 		end
 	end

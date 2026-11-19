@@ -177,6 +177,41 @@ ns.PrintToFrame = function(chatFrame, msg, chatType)
 	end
 end
 
+-- Emit a line Limpid invented itself (a vendor sale, a mail or trade item, a
+-- synthesized quest status) to every chat window that is set to show the
+-- matching category.
+--
+-- These lines have no Blizzard chat event behind them, so nothing else routes
+-- them: they used to be written straight into the default window, which ignored
+-- the per-window chat settings completely. A category the user hid still turned
+-- up in the General tab, and a category moved to its own tab still printed into
+-- the main one.
+--
+-- `chatType` picks the colour, `group` the category to look for (defaults to
+-- chatType). When no window shows the category, nothing is printed: that is the
+-- user having hidden it. The default window is used only when the client does
+-- not expose the per-window category API at all.
+ns.PrintToChatType = function(msg, chatType, group)
+	if not msg then
+		return
+	end
+	group = group or chatType
+
+	local primary = _G.ChatFrame1
+	if (not group) or not (primary and primary.ContainsMessageGroup) then
+		ns.PrintToFrame(_G.DEFAULT_CHAT_FRAME or primary, msg, chatType)
+		return
+	end
+
+	local count = _G.NUM_CHAT_WINDOWS or 10
+	for i = 1, count do
+		local frame = _G["ChatFrame" .. i]
+		if frame and frame.ContainsMessageGroup and frame:ContainsMessageGroup(group) then
+			ns.PrintToFrame(frame, msg, chatType)
+		end
+	end
+end
+
 -- Creates a per-chat-frame batching buffer. Bursts of events that fire within
 -- the same frame (e.g. a quest turn-in) are collected per chat frame and
 -- flushed once on the next frame. `newState()` returns a fresh accumulator;

@@ -285,3 +285,6 @@ L["copy chat text"] = "copier le texte du chat"
 
 -- Message de la nouvelle fenêtre détachée
 L["New window: use its tab menu > Settings to add chat channels."] = "Nouvelle fenêtre : utilisez le menu de son onglet > Réglages pour y ajouter des canaux."
+
+-- Ajout à l'infobulle des cases de filtre
+L["Unticking this also hides these messages from chat."] = "Décocher masque aussi ces messages du chat."

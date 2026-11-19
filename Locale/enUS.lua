@@ -291,3 +291,6 @@ L["copy chat text"] = true
 
 -- New detached window hint
 L["New window: use its tab menu > Settings to add chat channels."] = true
+
+-- Filter checkbox tooltip addition
+L["Unticking this also hides these messages from chat."] = true
