@@ -1,6 +1,8 @@
 local Core, Constants, Utils = unpack(select(2, ...))
 local UIManager = Core:GetModule("UIManager")
 
+local L = LibStub("AceLocale-3.0"):GetLocale("Limpid")
+
 local UnlockMover = Constants.ACTIONS.UnlockMover
 local UPDATE_CONFIG = Constants.EVENTS.UPDATE_CONFIG
 
@@ -207,7 +209,13 @@ function UIManager:OnEnable()
 					moverName = "LimpidUIMoverFrame" .. num,
 					containerName = "LimpidUIFrame" .. num,
 					dockName = "LimpidUIChatDock" .. num,
-					primaryChatFrame = nil, -- Will be assigned by SetupTabs
+					-- Taken from the window's own saved frame list. The comment here
+					-- used to say SetupTabs would fill this in, which it never did,
+					-- so a restored window carried a nil primary frame all session.
+					primaryChatFrame = windowProfile.chatFrames
+						and windowProfile.chatFrames[1]
+						and _G["ChatFrame" .. windowProfile.chatFrames[1]]
+						or nil,
 				})
 				if window then
 					self.windows[windowId] = window
@@ -822,11 +830,26 @@ function UIManager:SpawnNewWindow(sourceWindowId)
 	newWindow.container:Show()
 	newWindow.dock:Show()
 
+	-- Make the window the user just created the active one, so pressing Enter
+	-- opens the edit box under IT instead of under the window they came from.
+	if self.SetActiveWindow then
+		self:SetActiveWindow(newWindow)
+	end
+
 	-- Automatically unlock frames so the user can see the new window and
 	-- reposition/resize it immediately. This dispatches UNLOCK_MOVER which
 	-- enables mouse on all mover frames (including the new one) and shows the
 	-- lock/unlock dialog.
 	Core:Dispatch(UnlockMover())
+
+	-- A brand-new chat window starts with NO numbered channels: the client
+	-- gives it say/yell/guild/party/whispers and nothing else. That is the
+	-- game's own behaviour for any new window, but it looks like a bug from
+	-- here, so say it plainly instead of leaving the user with a window that
+	-- never shows General or Trade.
+	if Utils and Utils.notify then
+		Utils.notify(L["New window: use its tab menu > Settings to add chat channels."])
+	end
 
 	return newWindow
 end

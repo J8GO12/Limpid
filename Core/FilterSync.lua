@@ -36,7 +36,10 @@ local CC_TO_BLIZZARD = {
 	bossmessages = { "MONSTER_BOSS_EMOTE", "MONSTER_BOSS_WHISPER" },
 }
 
--- Reverse mapping: Blizzard message group -> Limpid filter key
+-- Reverse mapping: Blizzard message group -> Limpid filter key.
+-- NOTE: several groups map to the SAME filter (LOOT, MONEY and CURRENCY all
+-- back "loot"), so this lookup alone must never decide the filter's new state
+-- -- see AnyGroupEnabled below.
 local BLIZZARD_TO_CC = {}
 for ccFilter, blizzGroups in pairs(CC_TO_BLIZZARD) do
 	for _, group in ipairs(blizzGroups) do
@@ -67,6 +70,35 @@ local function EnableMessageGroup(group)
 		return
 	end
 	chatFrame:AddMessageGroup(group)
+end
+
+-- Is ANY of the Blizzard categories backing `ccFilter` still enabled on the
+-- primary chat frame?
+--
+-- A Limpid filter can be backed by several Blizzard categories ("loot" covers
+-- LOOT, MONEY and CURRENCY). Unticking one of them used to switch the whole
+-- Limpid filter off, so unticking "Currency" in the game's chat settings also
+-- killed loot AND money formatting. The filter's new state is therefore decided
+-- by the whole group, not by the single category that just changed.
+--
+-- Returns nil when the state can't be read, so the caller keeps its old
+-- single-category behaviour instead of guessing.
+local function AnyGroupEnabled(ccFilter)
+	local chatFrame = GetPrimaryChatFrame()
+	local groups = CC_TO_BLIZZARD[ccFilter]
+	if not chatFrame or not chatFrame.ContainsMessageGroup or not groups then
+		return nil
+	end
+	for _, group in ipairs(groups) do
+		-- Skip categories this client doesn't have: they can never be ticked,
+		-- so they must not drag the filter down with them.
+		if (not ChatTypeGroup) or ChatTypeGroup[group] then
+			if chatFrame:ContainsMessageGroup(group) then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 -- Sync a Limpid filter state TO Blizzard's settings.
@@ -104,6 +136,14 @@ function FilterSync:SyncFromBlizzard(group, enabled)
 	local ccFilter = BLIZZARD_TO_CC[group]
 	if not ccFilter then
 		return
+	end
+
+	-- This runs from a POST-hook, so the frame already reflects the change:
+	-- ask it whether any backing category survives instead of trusting the
+	-- single one that just moved.
+	local anyEnabled = AnyGroupEnabled(ccFilter)
+	if anyEnabled ~= nil then
+		enabled = anyEnabled
 	end
 
 	-- Only update if different from current state

@@ -282,3 +282,6 @@ L["unlock or lock the chat window"] = "déverrouiller ou verrouiller la fenêtre
 L["unlock or lock the loot list"] = "déverrouiller ou verrouiller la liste de butin"
 L["show or hide the demo"] = "afficher ou masquer la démo"
 L["copy chat text"] = "copier le texte du chat"
+
+-- Message de la nouvelle fenêtre détachée
+L["New window: use its tab menu > Settings to add chat channels."] = "Nouvelle fenêtre : utilisez le menu de son onglet > Réglages pour y ajouter des canaux."

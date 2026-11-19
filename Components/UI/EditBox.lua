@@ -25,9 +25,13 @@ local hooksecurefunc = hooksecurefunc
 -- path stays secure. The 3.3.5 version mixed its own methods into the frame,
 -- replaced its focus scripts and raw-hooked SetTextInsets; any of those would
 -- taint the box on the modern client. This version therefore:
---   * keeps ALL of its own state on a separate controller table (below),
---     writing nothing onto the Blizzard frame;
---   * only uses secure post-hooks (HookScript / hooksecurefunc);
+--   * keeps ALL of its own state on a separate controller table (below), so no
+--     state field of ours is ever added to the Blizzard frame;
+--   * only uses secure post-hooks (HookScript / hooksecurefunc). Be precise
+--     about what that means: hooksecurefunc(frame, "SetTextInsets", ...) DOES
+--     replace that method on the frame. It is the sanctioned wrapper rather
+--     than a raw hook, but it is the one Blizzard-frame field this file
+--     writes, and it runs inside the client's own header-update call;
 --   * only calls plain layout/skin methods (SetParent, SetPoint, SetFont,
 --     texture alpha) on the frame.
 local EditBox = {}
@@ -65,6 +69,29 @@ function EditBox:UpdateLayout()
 	self:ApplyTextInsets()
 end
 
+-- Usable width of a header FontString, or nil when it can't be measured.
+--
+-- GetWidth() is the LAID-OUT width: the client clamps a long chat-type header
+-- to part of the edit box and shows the suffix ("...") to mark the cut.
+-- GetStringWidth() returns the full untruncated text width instead, so using it
+-- made the left inset far wider than the header actually drawn -- on a long
+-- channel name the inset could reach the right edge and the text being typed
+-- disappeared. Falls back to the string width only when the frame has no laid
+-- out width yet.
+local function HeaderWidth(fontString)
+	if not fontString then
+		return nil
+	end
+	local width = fontString:GetWidth()
+	if type(width) ~= "number" or Utils.IsSecret(width) or width <= 0 then
+		width = fontString:GetStringWidth()
+	end
+	if type(width) ~= "number" or Utils.IsSecret(width) then
+		return nil
+	end
+	return width
+end
+
 -- Re-apply LimpidUI' text insets (left inset = width of the channel header).
 -- Blizzard calls SetTextInsets itself every time the header changes; the
 -- secure post-hook installed in Init routes those calls here. The guard stops
@@ -78,16 +105,28 @@ function EditBox:ApplyTextInsets()
 
 	local left = 8
 	if header and header:IsShown() then
-		local width = header:GetStringWidth()
-		if type(width) == "number" and not Utils.IsSecret(width) then
+		local width = HeaderWidth(header)
+		if width then
 			left = left + width
-		end
-		local suffix = frame.headerSuffix
-		if suffix and suffix:IsShown() then
-			local suffixWidth = suffix:GetStringWidth()
-			if type(suffixWidth) == "number" and not Utils.IsSecret(suffixWidth) then
-				left = left + suffixWidth
+
+			local suffix = frame.headerSuffix
+			if suffix and suffix:IsShown() then
+				left = left + (HeaderWidth(suffix) or 0)
 			end
+		else
+			-- Header width unreadable (it is a secret value for whisper targets
+			-- during chat lockdown). Keep whatever inset is in place rather than
+			-- applying a bare 8, which drew the typed text on top of the header.
+			return
+		end
+	end
+
+	-- Never let the header push the text off the box: leave room to type.
+	local frameWidth = frame:GetWidth()
+	if type(frameWidth) == "number" and not Utils.IsSecret(frameWidth) and frameWidth > 0 then
+		local maxLeft = frameWidth - 8 - 40
+		if maxLeft > 8 and left > maxLeft then
+			left = maxLeft
 		end
 	end
 
@@ -211,7 +250,10 @@ function EditBox:UpdateFontFromProfile()
 		-- consistently in both places.
 		frame:SetShadowColor(0, 0, 0, 1)
 		frame:SetShadowOffset(1, -1)
-		for _, fontString in ipairs({ frame.header, frame.headerSuffix, frame.prompt }) do
+		-- Listed one by one rather than walked with ipairs: ipairs stops at the
+		-- first nil, so a client without `headerSuffix` would have silently left
+		-- `prompt` on the old font.
+		for _, fontString in next, { header = frame.header, suffix = frame.headerSuffix, prompt = frame.prompt } do
 			fontString:SetFont(fontPath, fontSize, fontFlags or "")
 			fontString:SetShadowColor(0, 0, 0, 1)
 			fontString:SetShadowOffset(1, -1)

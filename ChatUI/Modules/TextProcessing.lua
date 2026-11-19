@@ -87,10 +87,21 @@ end
 ---
 -- Adds timestamps in [HH:MM] format if enabled in settings.
 -- Uses the provided profile's showTimestamps setting.
+--
+-- Skipped when the GAME's own "Timestamps" chat option is on: the client
+-- already prepends one to the text before it reaches us, and adding a second
+-- gave every line two clocks.
 local function timestampProcessor(text, profile)
 	local p = profile or Core.db.profile
 	if not p.showTimestamps then
 		return text
+	end
+	local GetCVar = _G.GetCVar
+	if GetCVar then
+		local native = GetCVar("showTimestamps")
+		if native and native ~= "" and native ~= "none" then
+			return text
+		end
 	end
 	local timestamp = date("[%H:%M] ")
 	return timestamp .. text

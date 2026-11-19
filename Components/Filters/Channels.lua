@@ -6,11 +6,34 @@ local Module = ns:NewModule("Channels")
 local L = LibStub("AceLocale-3.0"):GetLocale((...))
 
 -- Lua API
+local string_find = string.find
 local string_gsub = string.gsub
+local string_lower = string.lower
 local string_match = string.match
 local string_sub = string.sub
 local string_upper = string.upper
 local table_insert = table.insert
+
+-- Apply the configured capitalisation to a channel label's first letter.
+-- Turning "Capitalize Channel Name" off now actively LOWERCASES that letter:
+-- the client always hands the name capitalized, so the option otherwise looked
+-- dead. Used by both the numbered channels and the group channels (Guild,
+-- Party, Raid, Officer), which previously ignored the setting entirely.
+-- `isAbbrev` marks a short tag like "PL" or "BG". Those are acronyms, so the
+-- uncapitalized form lowercases the WHOLE tag ("pl"); lowercasing only the
+-- first letter would print "pL". A full channel name keeps its remaining
+-- letters, as the option describes ("General" -> "general").
+local applyCapitalization = function(label, isAbbrev)
+	if (not label) or label == "" then
+		return label or ""
+	end
+	local db = ns.db
+	local capitalize = (db == nil) or db.channelCapitalize
+	if not capitalize then
+		return isAbbrev and string_lower(label) or (string_lower(string_sub(label, 1, 1)) .. string_sub(label, 2))
+	end
+	return string_upper(string_sub(label, 1, 1)) .. string_sub(label, 2)
+end
 
 -- Rebuilds a channel link from its captured pieces according to the
 -- user's preferences:
@@ -28,7 +51,6 @@ local formatChannelTag = function(channel, number, displaynum, name)
 	local db = ns.db
 	local mode = (db and db.channelNameMode) or "initial"
 	local showNumber = (db == nil) or db.channelNumber
-	local capitalize = (db == nil) or db.channelCapitalize
 
 	local prefix = ""
 	if showNumber and displaynum then
@@ -46,15 +68,9 @@ local formatChannelTag = function(channel, number, displaynum, name)
 
 	local label
 	if mode == "full" then
-		label = name or ""
-		if capitalize and label ~= "" then
-			label = string_upper(string_sub(label, 1, 1)) .. string_sub(label, 2)
-		end
+		label = applyCapitalization(name or "", false)
 	else
-		label = string_sub(name or "", 1, 1)
-		if capitalize then
-			label = string_upper(label)
-		end
+		label = applyCapitalization(string_sub(name or "", 1, 1), true)
 	end
 
 	-- Both modes are wrapped in brackets, e.g. "[G]" or "[General]".
@@ -93,15 +109,23 @@ Module.OnInitialize = function(self)
 				-- Show the client's own (localized) name in "full" mode.
 				fullName = match
 				match = string_gsub(match, "[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%0")
+
+				-- Anchor the label to the channel link that precedes it in the
+				-- client's own string, so only the real chat header is rewritten.
+				-- An unanchored "%[Party%]" also rewrote the words a PLAYER typed:
+				-- "lf [Party] members" came out as "lf [P] members".
+				local linked = string_find(chatGlobal, "|Hchannel:", 1, true)
+					and string_match(chatGlobal, "|Hchannel:[^|]*|h%s*%[") ~= nil
+				local pattern = linked and ("(|Hchannel:[^|]*|h%s*)%[" .. match .. "%]")
+					or ("%[" .. match .. "%]")
+
 				table_insert(self.replacements, {
-					"%[" .. match .. "%]",
-					function()
+					pattern,
+					function(link)
 						local mode = (ns.db and ns.db.groupChannelNameMode) or "initial"
-						if mode == "full" then
-							return "[" .. fullName .. "]"
-						else
-							return "[" .. shortName .. "]"
-						end
+						local isFull = (mode == "full")
+						local label = isFull and fullName or shortName
+						return (linked and link or "") .. "[" .. applyCapitalization(label, not isFull) .. "]"
 					end,
 				})
 			end
@@ -139,11 +163,17 @@ Module.OnInitialize = function(self)
 	--table_insert(self.replacements, {"|Hchannel:(.-):(%d+)|h%[(%d)%. (.-)(%s%-%s.-)%]|h", "|Hchannel:%1:%2|h%4.|h"})
 
 	-- "Changed Channel: [1. General]" -> "1. General" (prefix from the client's string).
+	--
+	-- NOT anchored with "^": the client puts its timestamp in front of the text
+	-- when the "Timestamps" chat option is on, which made the anchored version
+	-- quietly stop stripping the prefix for those users. The prefix immediately
+	-- followed by a channel LINK is specific enough on its own -- a player can
+	-- type the words but cannot type the link.
 	local changedPrefix = G.CHAT_YOU_CHANGED_NOTICE_BN and string_match(G.CHAT_YOU_CHANGED_NOTICE_BN, "^(.-)|H")
 	if changedPrefix and changedPrefix ~= "" then
 		changedPrefix = string_gsub(changedPrefix, "[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%0")
 		table_insert(self.replacements, {
-			"^" .. changedPrefix .. "|Hchannel:(.-):(%d+)|h%[(%d+)%. (.-)%]|h",
+			changedPrefix .. "|Hchannel:(.-):(%d+)|h%[(%d+)%. (.-)%]|h",
 			"|Hchannel:%1:%2|h%3. %4|h",
 		})
 	end

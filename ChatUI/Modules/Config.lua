@@ -537,14 +537,14 @@ function C:OnEnable()
 									key = "messageFontFlags",
 									name = L["Font style"],
 									desc = L["Add an outline to chat message text so it stands out instead of looking flat."],
-									order = 1.6,
+									order = 1.25,
 									values = FLAGS,
 								}),
 								chatBackgroundOpacity = rangeOption({
 									key = "chatBackgroundOpacity",
 									name = L["Background opacity"],
 									desc = "Default: " .. Core.defaults.profile.chatBackgroundOpacity,
-									order = 1.2,
+									order = 1.69,
 									min = 0,
 									max = 1,
 									softMin = 0,
@@ -555,7 +555,7 @@ function C:OnEnable()
 									key = "chatBackgroundColor",
 									name = L["Background color"],
 									desc = L["The colour of the chat message background."],
-									order = 1.7,
+									order = 1.695,
 								}),
 								messageLeading = rangeOption({
 									key = "messageLeading",
@@ -731,7 +731,7 @@ function C:OnEnable()
 									name = L["Slide in duration"],
 									desc = "Default: " .. Core.defaults.profile.chatSlideInDuration,
 									type = "range",
-									order = 2.3,
+									order = 2.35,
 									min = 0,
 									max = 30,
 									softMin = 0,
@@ -791,7 +791,11 @@ function C:OnEnable()
 									max = 12,
 									softMin = 0,
 									softMax = 12,
-									step = 3.1,
+									-- Was 3.1 (the neighbouring "order" value
+									-- pasted in by mistake), so the slider could
+									-- only land on 0 / 3.1 / 6.2 / 9.3 / 12.4 and
+									-- could never return to its default of 4.
+									step = 1,
 									get = function(info)
 										return ProfileFor(info).iconTextureYOffset
 									end,
@@ -1542,11 +1546,13 @@ function C:RefreshConfig()
 end
 
 function C:OnProfileReset()
-	-- Also reset Limpid filter settings
-	local Limpid = LibStub("AceAddon-3.0"):GetAddon("Limpid", true)
-	if Limpid and Limpid.ResetLimpidSettings then
-		Limpid:ResetLimpidSettings()
-	end
-	-- Refresh LimpidUI UI config
+	-- Reset ONLY the chat-appearance profile.
+	--
+	-- This used to also call Limpid:ResetLimpidSettings(), which rewrites the
+	-- whole Limpid database. That database is account-wide and has no profiles,
+	-- so "Reset Profile" -- whose confirmation only mentions the chat profile --
+	-- silently wiped every filter, every channel setting and the loot-popup
+	-- tuning for every character on the account. Wiping all of that is what the
+	-- explicit "Wipe All Data" button in Limpid's own options is for.
 	self:RefreshConfig()
 end

@@ -99,11 +99,17 @@ end
 -- Chat message event filters: the ChatFrame_* globals are deprecation shims
 -- that only exist when a CVar enables them; ChatFrameUtil is the real API.
 ns.AddMessageEventFilter = function(event, func)
-	_G.ChatFrameUtil.AddMessageEventFilter(event, func)
+	local util = _G.ChatFrameUtil
+	if util and util.AddMessageEventFilter then
+		util.AddMessageEventFilter(event, func)
+	end
 end
 
 ns.RemoveMessageEventFilter = function(event, func)
-	_G.ChatFrameUtil.RemoveMessageEventFilter(event, func)
+	local util = _G.ChatFrameUtil
+	if util and util.RemoveMessageEventFilter then
+		util.RemoveMessageEventFilter(event, func)
+	end
 end
 
 -- Reloading the UI from addon code is a protected action on this client

@@ -264,8 +264,16 @@ function ChatTabMixin:ShowContextMenu()
 				if not outOfCombat() or not _G.ChatConfigFrame then
 					return
 				end
-				-- The settings window edits "the current chat frame". This
-				-- global is only read by the chat settings / window-menu code.
+				-- The settings window edits "the current chat frame", and it
+				-- reads this global to know which one. Setting it is required,
+				-- not cosmetic: the client only sets it from a right-click on a
+				-- NATIVE tab, and Limpid hides those, so without this line the
+				-- global stays nil and the settings window opens with an empty
+				-- channel list.
+				--
+				-- It is also read by the window colour / opacity / font-size /
+				-- rename paths, so treat it as shared state rather than as
+				-- private to the settings window.
 				_G.CURRENT_CHAT_FRAME_ID = chatFrame:GetID()
 				_G.ShowUIPanel(_G.ChatConfigFrame)
 			end)

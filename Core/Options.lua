@@ -122,7 +122,10 @@ local formattingDB = {
 			width = 1.5,
 			type = "toggle",
 			disabled = function(info)
-				return not ns.db.filters.channels
+				-- "Number only" style already shows nothing but the number, so
+				-- this toggle has no effect there. It used to stay clickable
+				-- and silently do nothing.
+				return (not ns.db.filters.channels) or ns.db.channelNameMode == "none"
 			end,
 			set = function(info, value)
 				ns.db.channelNumber = value
@@ -176,6 +179,10 @@ local formattingDB = {
 				ns.db.forceClassColors = value
 				if value then
 					ns:ApplyClassColors()
+				elseif ns.RestoreClassColors then
+					-- Unticking used to write `false` and change nothing else,
+					-- so class colours stayed forced on for good.
+					ns:RestoreClassColors()
 				end
 			end,
 			get = function(info)
@@ -723,12 +730,17 @@ Options.GenerateOptionsMenu = function(self)
 
 	local glass = _G.LimpidUI
 	if glass and glass.configGroups then
-		-- Order them after the Filters tab; keep Profiles last.
+		-- Order them after the Filters tab; keep About and Profiles last.
+		-- Any group missing from this map was forced to 50, which collapsed
+		-- "About" (authored last) and "Buttons" onto the same rank and pushed
+		-- About above Buttons on the alphabetical tie-break.
 		local glassOrders = {
 			general = 2,
 			editBox = 3,
 			messages = 4,
 			topBar = 5,
+			buttons = 6,
+			about = 99,
 			profile = 100,
 		}
 		for key, group in next, glass.configGroups do
@@ -800,11 +812,29 @@ end
 -- Forever port: reloading the UI from addon code is a protected action on
 -- this client, so nothing is reloaded automatically anymore -- the user is
 -- told to type /reload instead.
+-- Settings that only change how a message is formatted AS IT ARRIVES. Lines
+-- already on screen keep the shape they were given, so the window shows two
+-- formats at once until it is reloaded or scrolls clear. These are watched so
+-- the status bar actually says so -- previously only hideCombatLog was, and the
+-- eight setters calling UpdateReloadStatus could never light it up.
+local REFORMAT_KEYS = {
+	"channelNameMode",
+	"groupChannelNameMode",
+	"channelNumber",
+	"channelCapitalize",
+	"capitalizeNames",
+}
+
 Options.TakeSettingsSnapshot = function(self)
 	self.snapshot = {}
 	local glass = _G.LimpidUI
 	if glass and glass.db and glass.db.profile then
 		self.snapshot.hideCombatLog = glass.db.profile.hideCombatLog
+	end
+	if ns.db then
+		for _, key in ipairs(REFORMAT_KEYS) do
+			self.snapshot[key] = ns.db[key]
+		end
 	end
 end
 
@@ -818,6 +848,13 @@ Options.IsDirty = function(self)
 	if glass and glass.db and glass.db.profile then
 		if snapshot.hideCombatLog ~= nil and snapshot.hideCombatLog ~= glass.db.profile.hideCombatLog then
 			return true
+		end
+	end
+	if ns.db then
+		for _, key in ipairs(REFORMAT_KEYS) do
+			if snapshot[key] ~= nil and snapshot[key] ~= ns.db[key] then
+				return true
+			end
 		end
 	end
 	return false

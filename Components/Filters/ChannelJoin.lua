@@ -4,7 +4,7 @@ local Module = ns:NewModule("Channeljoin")
 
 -- Lua API
 local ipairs = ipairs
-local string_find = string.find
+local pairs = pairs
 local string_gsub = string.gsub
 local string_match = string.match
 local string_sub = string.sub
@@ -29,12 +29,25 @@ for _, global in ipairs({
 	end
 end
 
+-- Strip what the client may put in FRONT of the message text before the notice
+-- itself starts: a colour code, and the timestamp the game prepends when the
+-- "Timestamps" chat option is on ("09:14:02 ", "[9:14 PM] ", ...). Without this
+-- the anchored test below silently stopped matching for anyone using
+-- timestamps, so the notices were never hidden.
+local function stripLeadingNoise(text)
+	text = string_gsub(text, "^|c%x%x%x%x%x%x%x%x", "")
+	-- Optional bracket, H:M(:S), optional AM/PM, optional closing bracket.
+	text = string_gsub(text, "^[%[%(]?%d+[:%.]%d+[:%.%d]*%s*[AaPp]?%.?[Mm]?%.?[%]%)]?%s+", "")
+	return text
+end
+
 -- True if the line is a channel join/leave/change NOTICE (not player chat).
--- Anchored to the start of the line (after stripping any leading colour code) so
--- it matches the notice -- e.g. "Left Channel: <channel>" -- but never a normal
--- message that merely mentions the phrase, which renders as "[chan] Sender: ...".
+-- Anchored to the start of the line (after stripping colour code and timestamp)
+-- so it matches the notice -- e.g. "Left Channel: <channel>" -- but never a
+-- normal message that merely mentions the phrase, which renders as
+-- "[chan] Sender: ...".
 local function isChannelNotice(msg)
-	local text = string_gsub(msg, "^|c%x%x%x%x%x%x%x%x", "")
+	local text = stripLeadingNoise(msg)
 	for prefix in pairs(prefixes) do
 		if string_sub(text, 1, #prefix) == prefix then
 			return true
@@ -60,24 +73,24 @@ local onAddMessageProxy = function(...)
 	return Module:OnAddMessage(...)
 end
 
--- Filter the actual CHAT_MSG_CHANNEL_NOTICE event.
--- The first argument is the notice type: "YOU_JOINED", "YOU_LEFT", "YOU_CHANGED".
-Module.OnChatEvent = function(_, _, _, message)
-	if message == "YOU_JOINED" or message == "YOU_LEFT" or message == "YOU_CHANGED" then
-		return true
-	end
-end
-
-local onChatEventProxy = function(...)
-	return Module:OnChatEvent(...)
-end
+-- NOTE: this filter deliberately does NOT suppress the CHAT_MSG_CHANNEL_NOTICE
+-- event itself anymore.
+--
+-- A message event filter that returns true aborts the client's whole chat
+-- handler for that line, and the channel bookkeeping lives inside it: leaving a
+-- channel clears the frame's channel entries, and a "changed channel" notice is
+-- what re-adds a regional channel whose client-side filter was dropped. Cutting
+-- the event therefore left dead channel entries behind after /leave and could
+-- make a regional channel stop showing until the next /reload -- while hiding
+-- the same text the display filter below already hides.
+--
+-- Hiding happens purely at the display layer, so the game keeps its channel
+-- list correct and other addons still see the event.
 
 Module.OnEnable = function(self)
 	self:RegisterUnconditionalBlacklistFilter(onAddMessageProxy)
-	self:RegisterMessageEventFilter("CHAT_MSG_CHANNEL_NOTICE", onChatEventProxy)
 end
 
 Module.OnDisable = function(self)
 	self:UnregisterUnconditionalBlacklistFilter(onAddMessageProxy)
-	self:UnregisterMessageEventFilter("CHAT_MSG_CHANNEL_NOTICE", onChatEventProxy)
 end

@@ -608,9 +608,38 @@ end
 -- Apply class colors to player names in every chat type.
 -- Forever exposes this as a single CVar ("0" = always colour by class), so
 -- there is no per-channel loop anymore.
+--
+-- The value found before Limpid forced it is remembered so the option can be
+-- switched back OFF again: it used to be a one-way door, writing `false` to the
+-- database while leaving the CVar forced forever.
+local previousClassColorOverride
+
 ns.ApplyClassColors = function(self)
 	if GetCVar and SetCVar and GetCVar("chatClassColorOverride") ~= "0" then
+		previousClassColorOverride = GetCVar("chatClassColorOverride")
 		SetCVar("chatClassColorOverride", "0")
+	end
+end
+
+-- Undo ApplyClassColors: restore what was there before, or the client's own
+-- default when Limpid forced the CVar in an earlier session and has nothing
+-- remembered. Does nothing if the CVar is no longer the forced value.
+ns.RestoreClassColors = function(self)
+	if not (GetCVar and SetCVar) then
+		return
+	end
+	if GetCVar("chatClassColorOverride") ~= "0" then
+		return
+	end
+
+	local restore = previousClassColorOverride
+	if not restore and GetCVarDefault then
+		restore = GetCVarDefault("chatClassColorOverride")
+	end
+	previousClassColorOverride = nil
+
+	if restore and restore ~= "0" then
+		SetCVar("chatClassColorOverride", restore)
 	end
 end
 

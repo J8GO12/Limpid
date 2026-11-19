@@ -5,13 +5,23 @@ local Module = ns:NewModule("SystemMessages")
 -- Lua API
 local string_find = string.find
 
--- WoW Globals - System message strings
-local G = {
-	-- Session started messages
-	SESSION_START = "Session started",
-	-- Addon loaded messages
-	ADDON_LOADED = "AddOn",
-}
+-- LANGUAGE NOTE: unlike every other filter in Limpid, this one cannot build its
+-- patterns from a client global string, because the line it targets is not a
+-- Blizzard message -- it is the server's own "Session started" banner and the
+-- client exposes no constant for it. It is therefore matched literally and only
+-- works on an English server greeting. Everything else this module used to drop
+-- has been removed rather than guessed at (see below).
+local SESSION_START = "Session started"
+
+-- True for the one repetitive banner this filter exists to hide.
+--
+-- The previous version also dropped any system line containing both "AddOn" and
+-- "loaded". Nothing in the client produces such a line, the options text never
+-- promised it, and it silently swallowed OTHER addons' startup messages, which
+-- is exactly the kind of thing a chat addon must not do. It is gone.
+local function isSessionBanner(text)
+	return string_find(text, SESSION_START, 1, true) ~= nil
+end
 
 -- Filter system message spam
 Module.OnAddMessage = function(_, _, msg)
@@ -19,13 +29,7 @@ Module.OnAddMessage = function(_, _, msg)
 		return
 	end
 
-	-- Filter "Session started" spam
-	if string_find(msg, G.SESSION_START) then
-		return true
-	end
-
-	-- Filter addon loaded notifications (if they appear)
-	if string_find(msg, G.ADDON_LOADED) and string_find(msg, "loaded") then
+	if isSessionBanner(msg) then
 		return true
 	end
 end
@@ -39,8 +43,7 @@ Module.OnChatEvent = function(_, _, _, message)
 		return
 	end
 
-	-- Filter repetitive system messages
-	if string_find(message, "Session started") then
+	if isSessionBanner(message) then
 		return true -- Suppress message
 	end
 end

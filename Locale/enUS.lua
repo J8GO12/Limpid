@@ -288,3 +288,6 @@ L["unlock or lock the chat window"] = true
 L["unlock or lock the loot list"] = true
 L["show or hide the demo"] = true
 L["copy chat text"] = true
+
+-- New detached window hint
+L["New window: use its tab menu > Settings to add chat channels."] = true
