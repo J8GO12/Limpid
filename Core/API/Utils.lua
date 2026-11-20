@@ -191,24 +191,42 @@ end
 -- chatType). When no window shows the category, nothing is printed: that is the
 -- user having hidden it. The default window is used only when the client does
 -- not expose the per-window category API at all.
+-- The chat windows currently set to show `group`.
+--
+-- Returns nil when this client has no per-window category API, which tells the
+-- caller to fall back to the default window instead of printing nowhere. An
+-- EMPTY table is a real answer: no window wants this category.
+ns.ChatFramesShowing = function(group)
+	local primary = _G.ChatFrame1
+	if (not group) or not (primary and primary.ContainsMessageGroup) then
+		return nil
+	end
+
+	local frames = {}
+	local count = _G.NUM_CHAT_WINDOWS or 10
+	for i = 1, count do
+		local frame = _G["ChatFrame" .. i]
+		if frame and frame.ContainsMessageGroup and frame:ContainsMessageGroup(group) then
+			frames[#frames + 1] = frame
+		end
+	end
+	return frames
+end
+
 ns.PrintToChatType = function(msg, chatType, group)
 	if not msg then
 		return
 	end
 	group = group or chatType
 
-	local primary = _G.ChatFrame1
-	if (not group) or not (primary and primary.ContainsMessageGroup) then
-		ns.PrintToFrame(_G.DEFAULT_CHAT_FRAME or primary, msg, chatType)
+	local frames = ns.ChatFramesShowing(group)
+	if not frames then
+		ns.PrintToFrame(_G.DEFAULT_CHAT_FRAME or _G.ChatFrame1, msg, chatType)
 		return
 	end
 
-	local count = _G.NUM_CHAT_WINDOWS or 10
-	for i = 1, count do
-		local frame = _G["ChatFrame" .. i]
-		if frame and frame.ContainsMessageGroup and frame:ContainsMessageGroup(group) then
-			ns.PrintToFrame(frame, msg, chatType)
-		end
+	for _, frame in ipairs(frames) do
+		ns.PrintToFrame(frame, msg, chatType)
 	end
 end
 

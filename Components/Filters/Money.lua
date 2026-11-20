@@ -5,6 +5,7 @@ local Module = ns:NewModule("Money", "LibMoreEvents-1.0")
 -- GLOBALS: ChatTypeInfo, GetMoney
 -- GLOBALS: AuctionHouseFrame, ClassTrainerFrame, LootFrame, MailFrame, MerchantFrame
 -- Lua API
+local ipairs = ipairs
 local math_abs = math.abs
 local math_floor = math.floor
 local math_mod = math.fmod
@@ -252,26 +253,40 @@ end
 -- that bypasses LimpidUI, and since LimpidUI hides the native chat frame the money
 -- line ended up invisible. Instead we call the public AddMessage (so LimpidUI sees
 -- it) and set a guard flag so our own blacklist filter lets this one line pass.
+-- Goes to every window set to show the MONEY category, and to none when the
+-- user has hidden it.
+--
+-- These lines are built from the PLAYER_MONEY event, not from a chat message,
+-- so no chat category gates them on their way in. Writing them straight into
+-- the default window therefore ignored the "Money" chat setting completely:
+-- unticking it changed nothing, the coin lines kept arriving, and the setting
+-- looked broken. It also meant money always landed in the first window even
+-- when the user had moved that category to a tab of its own.
 Module.AddMessage = function(self, msg, r, g, b, chatID, ...)
 	if (not msg) or (msg == "") then
 		return
 	end
 
-	local chatFrame = DEFAULT_CHAT_FRAME or ChatFrame1
-	if (not chatFrame) or not chatFrame.AddMessage then
-		print(msg)
-		return
+	local frames = ns.ChatFramesShowing("MONEY")
+	if not frames then
+		-- No per-window category API on this client: keep the old behaviour.
+		local fallback = DEFAULT_CHAT_FRAME or ChatFrame1
+		frames = (fallback and fallback.AddMessage) and { fallback } or {}
+		if #frames == 0 then
+			print(msg)
+			return
+		end
 	end
 
 	self.emittingOwnMessage = true
 	-- pcall so a rendering error can never leave the guard flag stuck on, which
 	-- would silently disable money filtering for every later message.
-	local ok = pcall(chatFrame.AddMessage, chatFrame, msg, r, g, b)
-	self.emittingOwnMessage = false
-
-	if not ok then
-		print(msg)
+	for _, chatFrame in ipairs(frames) do
+		if chatFrame.AddMessage then
+			pcall(chatFrame.AddMessage, chatFrame, msg, r, g, b)
+		end
 	end
+	self.emittingOwnMessage = false
 end
 
 Module.OnEvent = function(self, event, ...)
